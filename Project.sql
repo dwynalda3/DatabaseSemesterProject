@@ -1,10 +1,11 @@
+
 /*Semester Database Project
 Matt Noblett 
 George Glessner
 Dylan Durke
 Daniel Wynalda
 */
-SPOOL SemesterProjectDatabase.out
+SPOOL Project.out
 SET ECHO ON
 
 drop table Album;
@@ -80,7 +81,8 @@ create table Performs
 (
 artist_id integer not null,
 tname char(25) not null,
-CONSTRAINT I7 primary key (artist_id, tname)
+album_id integer,
+CONSTRAINT I7 primary key (artist_id, tname, album_id)
 );
 
 create table ListedOn(
@@ -142,12 +144,12 @@ insert into ProducerLocation values (64531, '3349 Mike Drive');
 insert into ProducerLocation values (64531, '4525 Dance Dance');
 commit;
 
-insert into Performs values (000001, 'Depths Below');
-insert into Performs values (000001, 'Cannot Think');
-insert into Performs values (000002, 'Cannot Think');
-insert into Performs values (000003, 'Bleep Bloop Aftermath');
-insert into Performs values (000004, 'Light Up the Sky');
-insert into Performs values (000005, 'Darkness at Night');
+insert into Performs values (000001, 'Depths Below', 000001);
+insert into Performs values (000001, 'Cannot Think', 000001);
+insert into Performs values (000002, 'Cannot Think', 000001);
+insert into Performs values (000003, 'Bleep Bloop Aftermath', 000005);
+insert into Performs values (000004, 'Light Up the Sky', 000003);
+insert into Performs values (000005, 'Darkness at Night', 000004);
 commit;
 
 insert into ListedOn values (000012, 'Depths Below', 000001);
@@ -157,46 +159,132 @@ insert into ListedOn values (000012, 'Cannot Think', 000001);
 insert into ListedOn values (000012, 'Bleep Bloop Aftermath', 000005);
 commit;
 
+--
+-- Add the foreign keys:
+ALTER TABLE ProducerLocation 
+ADD FOREIGN KEY (pid) references Producer(pid)
+Deferrable initially deferred;
+
+ALTER TABLE ProducerLocation 
+ADD FOREIGN KEY (location) references Place(address)
+Deferrable initially deferred;
+
+ALTER TABLE Performs 
+ADD FOREIGN KEY (artist_id) references Artist(artist_id)
+Deferrable initially deferred;
+
+ALTER TABLE Performs 
+ADD FOREIGN KEY (tname) references Track(tname)
+Deferrable initially deferred;
+
+ALTER TABLE Performs 
+ADD FOREIGN KEY (album_id) references Album(album_id)
+Deferrable initially deferred;
+
+ALTER TABLE Track
+ADD FOREIGN KEY (album_id) references Album(album_id)
+Deferrable initially deferred;
+
+ALTER TABLE Place
+ADD FOREIGN KEY (artist_id) references Artist(artist_id)
+Deferrable initially deferred;
+
+ALTER TABLE ListedOn
+ADD FOREIGN KEY (playlist_id) references Playlist(playlist_id)
+Deferrable initially deferred;
+
+ALTER TABLE ListedOn
+ADD FOREIGN KEY (tname) references Track(tname)
+Deferrable initially deferred;
+
+ALTER TABLE ListedOn
+ADD FOREIGN KEY (album_id) references Album(album_id)
+Deferrable initially deferred;
+
+
 /*
 Queries Here
 */
 
+/*
+Select album name and year released of album with artist id being 3 or less and the year released being greater than 2000. Order by album name. 
+*/
+select a.album_name, a.year_released
+from album a
+where a.artist_id <= 3
+group by a.album_name, a.year_released
+having year_released > 2000
+order by a.album_name;
 
-select * from PlayList
-order by playlist_id;
+/*
+Select rank of album id 3 from album.
+*/
+select rank (3) within group
+(order by album_id)
+from album;
 
-select * from PlayList;
+/*
+Select the shortest track in library.
+*/
+select length
+from(select distinct length from track order by length)
+where rownum < 2;
 
-select * from Producer;
+/*
+Select album name, year released, artist id, and artist name from album and artist. Order by year released. 
+*/
+select a.album_name, a.year_released, ar.artist_id, ar.artist_name 
+from Album a, Artist ar
+where a.artist_id = ar.artist_id
+order by a.year_released;
+
+
+/*
+Select album name and year released of all albums that were released after 2000 and are not of genre "Emo"
+*/
+select a.album_name, a.year_released
+from album a
+where a.year_released > 2000 and 
+not exists(select * from track t where t.album_id = a.album_id and t.genre = 'Emo');
+
+/*
+Select track name, track genre, and track length of any track less than 4 minutes and not listed on a playlist.
+*/
+SELECT t.tname, t.genre, t.length
+FROM   track t
+WHERE  t.length < '4:00'  AND 
+       t.tname NOT IN (SELECT l.tname from listedon l);
+
+/*
+Select the longest track
+*/
+select max(length) 
+from track 
+where genre = 'Punk Metal';
+
+/*
+Select the shortest track
+*/
+select min(length) 
+from track 
+where genre = 'Punk Metal';
+
 
 select * from Producer 
 where experience LIKE '%High%';
 
-select * from Track;
 
 select * from Track 
 where tname LIKE '%Light%';
 
-select * from Track 
-order by tname;
 
 select * from Track
 where tname LIKE '%night%';
 
-select * from Artist;
 
-select * from Album
-order by album_name;
 
-select * from Artist
-order by artist_name;
 
-select * from Place
-order by state;
-
-select * from Place
-where zip_code like '%44342%'
-order by zip_code;
 
 
 SPOOL OFF
+
